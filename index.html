@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Shooter - Wave Survival</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .hud-top-left {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            font-size: 18px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .hud-top-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            font-size: 18px;
+            text-align: right;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .hud-bottom-left {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #ff00ff;
+            border-radius: 5px;
+            font-size: 16px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .stat {
+            margin: 5px 0;
+            color: #00ff00;
+        }
+
+        .stat-label {
+            color: #888;
+            display: inline-block;
+            width: 120px;
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 1px solid #00ff00;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00aa00);
+            width: 100%;
+        }
+
+        .ammo-bar {
+            width: 200px;
+            height: 15px;
+            background: #333;
+            border: 1px solid #ffff00;
+            margin-top: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ammo-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffff00, #ffaa00);
+            width: 100%;
+        }
+
+        /* Shop Modal */
+        #shopModal {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+
+        #shopModal.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .shop-header {
+            font-size: 36px;
+            margin-bottom: 30px;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        .shop-token-display {
+            font-size: 24px;
+            color: #ffff00;
+            margin-bottom: 20px;
+        }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin-bottom: 30px;
+        }
+
+        .shop-item {
+            background: rgba(50, 50, 50, 0.9);
+            border: 2px solid #ff00ff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+        }
+
+        .shop-item:hover {
+            background: rgba(100, 50, 100, 0.9);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #ff00ff;
+        }
+
+        .shop-item-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+
+        .shop-item-price {
+            font-size: 16px;
+            color: #ffff00;
+            margin-bottom: 10px;
+        }
+
+        .shop-item-owned {
+            color: #00ff00;
+            font-size: 14px;
+        }
+
+        .shop-button {
+            background: #ff00ff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            pointer-events: auto;
+        }
+
+        .shop-button:hover {
+            background: #ff00aa;
+        }
+
+        .shop-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            color: #999;
+        }
+
+        .shop-close {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            font-size: 36px;
+            cursor: pointer;
+            color: #ff00ff;
+            pointer-events: auto;
+        }
+
+        /* Wave/Status Modal */
+        #waveModal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border: 3px solid #ff00ff;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 500;
+            pointer-events: auto;
+        }
+
+        #waveModal.active {
+            display: block;
+        }
+
+        .wave-title {
+            font-size: 48px;
+            color: #ff00ff;
+            text-shadow: 0 0 20px #ff00ff;
+            margin-bottom: 20px;
+        }
+
+        .wave-tokens {
+            font-size: 28px;
+            color: #ffff00;
+            margin: 20px 0;
+        }
+
+        .wave-message {
+            font-size: 20px;
+            color: #00ffff;
+            margin: 20px 0;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: right;
+            pointer-events: auto;
+        }
+
+        .control-item {
+            margin: 5px 0;
+            color: #00ff00;
+        }
+
+        /* Crosshair */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .crosshair-line {
+            position: absolute;
+            background: #00ff00;
+        }
+
+        .crosshair-h {
+            width: 12px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-50%);
+        }
+
+        .crosshair-v {
+            width: 2px;
+            height: 12px;
+            top: 50%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-50%);
+        }
+
+        .crosshair-dot {
+            width: 4px;
+            height: 4px;
+            background: #ff0000;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        /* Game Over */
+        #gameOverModal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 60px;
+            border: 3px solid #ff0000;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1001;
+            pointer-events: auto;
+        }
+
+        #gameOverModal.active {
+            display: block;
+        }
+
+        .game-over-title {
+            font-size: 60px;
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000;
+            margin-bottom: 30px;
+        }
+
+        .game-over-stats {
+            font-size: 24px;
+            color: #ffff00;
+            margin: 15px 0;
+        }
+
+        .restart-button {
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 30px;
+            pointer-events: auto;
+        }
+
+        .restart-button:hover {
+            background: #cc0000;
+        }
+
+        /* Notification */
+        .notification {
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            color: #00ff00;
+            font-size: 18px;
+            pointer-events: none;
+            z-index: 200;
+            animation: fadeOut 3s ease-in-out forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="canvas"></canvas>
+
+        <!-- HUD -->
+        <div id="hud">
+            <!-- Top Left: Wave & Zombies -->
+            <div class="hud-top-left">
+                <div class="stat"><span class="stat-label">WAVE:</span> <span id="waveCount">1</span></div>
+                <div class="stat"><span class="stat-label">ZOMBIES:</span> <span id="zombieCount">0</span></div>
+                <div class="stat"><span class="stat-label">KILLS:</span> <span id="killCount">0</span></div>
+                <div class="stat"><span class="stat-label">SCORE:</span> <span id="scoreCount">0</span></div>
+            </div>
+
+            <!-- Top Right: Tokens & Health -->
+            <div class="hud-top-right">
+                <div class="stat"><span class="stat-label">TOKENS:</span> <span id="tokenCount">0</span> 🪙</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="healthBar"></div>
+                </div>
+                <div class="stat" style="margin-top: 5px;">
+                    <span id="healthText">100</span> / 100 HP
+                </div>
+            </div>
+
+            <!-- Bottom Left: Ammo & Weapon -->
+            <div class="hud-bottom-left">
+                <div class="stat"><span class="stat-label">WEAPON:</span> <span id="weaponName">Rifle</span></div>
+                <div class="ammo-bar">
+                    <div class="ammo-fill" id="ammoBar"></div>
+                </div>
+                <div class="stat" style="margin-top: 5px;">
+                    <span id="ammoText">30</span> / <span id="ammoMax">30</span>
+                </div>
+                <div class="stat" style="margin-top: 8px; color: #ffff00;">RELOAD: R</div>
+            </div>
+
+            <!-- Bottom Right: Controls -->
+            <div class="controls">
+                <div class="control-item">W/A/S/D - Move</div>
+                <div class="control-item">MOUSE - Aim</div>
+                <div class="control-item">CLICK - Shoot</div>
+                <div class="control-item">R - Reload</div>
+                <div class="control-item">SPACE - Jump</div>
+                <div class="control-item">P - Shop</div>
+            </div>
+
+            <!-- Crosshair -->
+            <div id="crosshair">
+                <div class="crosshair-line crosshair-h"></div>
+                <div class="crosshair-line crosshair-v"></div>
+                <div class="crosshair-dot"></div>
+            </div>
+        </div>
+
+        <!-- Wave Modal -->
+        <div id="waveModal">
+            <div class="wave-title" id="waveTitle">WAVE 1</div>
+            <div class="wave-message" id="waveMessage">Get Ready!</div>
+            <div class="wave-tokens" id="waveReward">🪙 1,000,000 Tokens</div>
+            <div class="wave-message" id="waveCountdown">Starting in 3...</div>
+        </div>
+
+        <!-- Shop Modal -->
+        <div id="shopModal">
+            <div class="shop-close" onclick="closeShop()">✕</div>
+            <div class="shop-header">🛍️ COSMETIC SHOP</div>
+            <div class="shop-token-display">Your Tokens: <span id="shopTokenDisplay">0</span> 🪙</div>
+            <div class="shop-grid" id="shopGrid"></div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="gameOverModal">
+            <div class="game-over-title">YOU DIED</div>
+            <div class="game-over-stats">Wave Reached: <span id="finalWave">1</span></div>
+            <div class="game-over-stats">Total Kills: <span id="finalKills">0</span></div>
+            <div class="game-over-stats">Final Score: <span id="finalScore">0</span></div>
+            <div class="game-over-stats">Tokens Earned: <span id="finalTokens">0</span></div>
+            <button class="restart-button" onclick="restartGame()">RESTART GAME</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
